@@ -16,6 +16,7 @@ struct queue
     pthread_mutex_t mutex;
     pthread_cond_t notEmpty;
     pthread_cond_t notFull;
+    bool didShutdown;
 };
 
 
@@ -31,6 +32,7 @@ queue_t queue_init(int capacity)
     pthread_mutex_init(&queue->mutex, NULL);
     pthread_cond_init(&queue->notEmpty, NULL);
     pthread_cond_init(&queue->notFull, NULL);
+    queue->didShutdown = false;
 
     return queue;
 }
@@ -41,6 +43,7 @@ void queue_destroy(queue_t q) {
     pthread_mutex_lock(&q->mutex);
     pthread_cond_broadcast(&q->notEmpty);
     pthread_cond_broadcast(&q->notFull);
+    q->didShutdown = true; // it shutdown!
 
     // free all nodes first
     while (q->head != NULL) {
@@ -109,7 +112,11 @@ void *dequeue(queue_t q) {
 }
 
 void queue_shutdown(queue_t q) {
-    // todo
+    pthread_mutex_lock(&q->mutex); // lock just in case
+    q->didShutdown = true; // it shutdown!
+    pthread_cond_broadcast(&q->notEmpty);
+    pthread_cond_broadcast(&q->notFull);
+    pthread_mutex_unlock(&q->mutex); // unlock!
 }
 
 bool is_empty(queue_t q) {
@@ -117,6 +124,6 @@ bool is_empty(queue_t q) {
 }
 
 bool is_shutdown(queue_t q) {
-    return false;// todo
+    return q->didShutdown;
 }
 
